@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Multiselect</title>
+  <script src="script/vue.js"></script>
+  <script src="script/plotly-latest.min.js"></script>
+  <script src="script/vue-multiselect.js"></script>
+  <link rel="stylesheet" type="text/css" href="script/vue-multiselect.min.css">
+</head>
+<body onload=init()>
+
+  <div id="params">
+    <multiselect
+    v-model="param_list"
+    :options="options"
+    :multiple="true"
+    placeholder="Välj näringsvärde"
+    >
+  </multiselect>
+  </div>
+
+<div id="app">
+  <multiselect
+  v-model="selectedFoodOptions"
+  id="ajax"
+  placeholder="Börja skriva"
+  :options="foodOptions"
+  :multiple="true"
+  :searchable="true"
+  :loading="isLoading"
+  :internal-search="false"
+  :clear-on-select="true"
+  :close-on-select="true"
+  :options-limit="100"
+  :limit="15"
+  :limit-text="limitText"
+  @search-change="asyncFind"
+  >
+</multiselect>
+
+<button type="button" name="button" onclick='drawChart(multi.selectedFoodOptions)'>Rita graf</button>
+<div id="plot" style="width: 800px; height: 400px;"></div>
+
+<p>Om du vill komma tillbaka till det här urvalet kan du kopiera adressen i det här fältet:</p>
+<input id="url" v-model="url" style="width: 600px">
+</div>
+
+<script type="text/javascript">
+var type="lin";
+//Stuff är det man skriver in i autocompleten
+var stuff = '';
+//myArr är arrayen som kommer tillbaka i AJAX-anropet
+var myArr = {};
+//foodValues är listan av alla näringsvärden
+var foodValues = [];
+//selectedFoodOptions är de livsmedel som är valda i multiselecten
+var selectedFoodOptions=[];
+
+function ajaxFindFood(stuff) {
+  //returnList är listan av Livsmedelsnamn som populerar dropdownen och som man väljer mellan
+  var returnList = [];
+  //Kanske är denna inte byggt enligt asynkront mönster egentligen...
+  var xmlhttp1 = new XMLHttpRequest();
+  var url = "db2.php?name=" + stuff;
+  xmlhttp1.onreadystatechange = function() {
+    if(xmlhttp1.readyState == 4 && xmlhttp1.status == 200) {
+      myArr = xmlhttp1.responseText; //variant JSON.parse(xmlhttp1.responseText);
+      //php returnerar en osnygg lista med '***' som avgränsare
+      myArr = myArr.split('***');
+      //Ta bort sista elementet som är '***'
+      myArr.splice(-1,1);
+      //Varje del av resultatet json-parsas för sig
+      for (var i = 0; i < myArr.length; i++) {
+        console.log(myArr[i]);
+        myArr[i]=JSON.parse(myArr[i]);
+        returnList.push(myArr[i].Livsmedelsnamn);
+      };
+    }
+  }
+  xmlhttp1.open("GET", url, true);
+  xmlhttp1.send();
+  return (returnList);
+}
+
+//När sidan laddats, populera multiselecten från url-parametrarna
+//Därefter rita diagrammet
+function init() {
+  var urlSelection = getSelectionFromUrl();
+  multi.selectedFoodOptions = urlSelection.food;
+  drawChart(multi.selectedFoodOptions);
+}
+
+//Hämta livsmedel i urlen för att populera multiselect
+function getSelectionFromUrl() {
+  //location.search returnerar alla parametrar till url.
+  //substring(1) utelämnar '?'
+  var url_args = window.location.search.substring(1);
+  console.log(window.location.search.substring(1));
+  //url_args=decodeURI(url_args);
+  console.log(url_args);
+  var obj = {};
+
+    if(url_args) {
+        url_args = JSON.parse('{"' + decodeURI(url_args)
+                .replace(/"/g, '\\"')
+                .replace(/&/g, '","')
+                .replace(/=/g, '":"') + '"}');
+    }
+    console.log(url_args);
+    return url_args;
+}
+
+
+
+
+var multi=new Vue({
+  components: {
+    Multiselect: window.VueMultiselect.default
+  },
+  data: {
+    url_args: '',
+    //De livsmedel man har valt
+    selectedFoodOptions: [],
+    //Alla livsmedel man kan välja mellan
+    foodOptions: [],
+    isLoading: false
+  },
+  methods: {
+    limitText (count) {
+      return `and ${count} other foods`
+    },
+    asyncFind (query) {
+      this.isLoading = true;
+      this.foodOptions = ajaxFindFood(query);
+      this.isLoading = false;
+    }
+  },
+  computed: {
+    url: function (){
+      //Borde kunna göras med location.search?
+      var address = window.location.href.split('?')[0];
+      var foodItems = this.selectedFoodOptions;
+      console.log(foodItems);
+      var food_url = encodeURI(foodItems);
+      var new_address = address + '?food=' + food_url;
+      return new_address;
+    },
+  }
+}).$mount('#app');
+
+//Multiselecten med listan över alla näringsvärden
+var parameters=new Vue({
+  components: {
+    Multiselect: window.VueMultiselect.default
+  },
+  data: {
+    param_list: ['Kolhydrater_g','Fett_g','Protein_g','Fibrer_g','Vatten_g','Avfall_skal_etc'],
+    options: ['Kolhydrater_g','Fett_g','Protein_g','Fibrer_g','Vatten_g','Avfall_skal_etc']
+  }
+}).$mount('#params')
+
+//Tar en lista av objekt med alla näringsvärden
+function sendToPlotly(foodValues) {
+  var data=[];
+  //Ett trace per livsmedel
+  for (var i = 0; i < foodValues.length; i++) {
+    if (foodValues[i]) {
+      trace=getData(foodValues[i]);
+      data.push(trace);
+    }
+  }
+  var layout = {
+    title: 'Mat',
+    xaxis: {
+      //Källan borde göras som en annotation
+      title: 'Näringsvärde, källa Livsmedelsverket'
+    },
+    yaxis: {
+      title: 'gram per 100 g',
+      type: type
+    }};
+    Plotly.newPlot('plot', data, layout);
+  }
+
+//Lägger till enkla citattecken till input
+function addQuotationMarks(item) {
+    return ("'" + item + "'");
+  }
+
+//Äkta AJAX...
+function drawChart(foodList) {
+  //Snygga till listan av Livsmedelsnamn så den kan skickas till databasen av php
+  foodList.forEach(addQuotationMarks);
+    foodList=foodList.join("','");
+    foodList=addQuotationMarks(foodList);
+    var xmlhttp2 = new XMLHttpRequest();
+    foodList=encodeURI(foodList);
+    var url = "food_values.php?foodStuff=" + foodList;
+    xmlhttp2.onreadystatechange = function() {
+      if(xmlhttp2.readyState == 4 && xmlhttp2.status == 200) {
+        foodValues = xmlhttp2.responseText; //JSON.parse(xmlhttp2.responseText);
+        foodValues=foodValues.split('##');
+        sendToPlotly(foodValues);
+      }
+    }
+    xmlhttp2.open("GET", url, true);
+    xmlhttp2.send();
+  }
+
+//Skapa data för de båda axlarna i Plotly-diagrammet
+function getData(oneItem) {
+    var params = parameters.param_list;
+    var oneItem=JSON.parse(oneItem);
+    var plot_data = {};
+    plot_data.x = params;
+    //Y-data är en array av värden
+    var y=[];
+    for (var i = 0; i < params.length; i++) {
+      //För varje parameter i listan av näringsvärden, läs värdet och pusha till y
+      y.push(oneItem[params[i]]);
+    }
+    plot_data.y = y;
+    plot_data.type = "scatter";
+    plot_data.name = oneItem['Livsmedelsnamn'];
+    return(plot_data);
+  }
+
+  </script>
+
+</body>
+</html>
