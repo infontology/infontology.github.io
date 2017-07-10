@@ -10,3 +10,6 @@ Script-bibliotek ska innehålla:
 * plotly-latest.min.js
 * vue-multiselect.min.css
 
+
+
+

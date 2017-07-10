@@ -39,7 +39,8 @@
   >
 </multiselect>
 
-<button type="button" name="button" onclick='drawChart(multi.selectedFoodOptions)'>Rita graf</button>
+<!-- drawChart skickas med false för att den inte ska lägga till citattecken -->
+<button type="button" name="button" onclick='drawChart(multi.selectedFoodOptions,false)'>Rita graf</button>
 <div id="plot" style="width: 800px; height: 400px;"></div>
 
 <p>Om du vill komma tillbaka till det här urvalet kan du kopiera adressen i det här fältet:</p>
@@ -50,7 +51,7 @@
 var type="lin";
 //Stuff är det man skriver in i autocompleten
 var stuff = '';
-//myArr är arrayen som kommer tillbaka i AJAX-anropet
+//myArr är arrayen som kommer tillbaka i AJAX-anropet (Varför kryllparenteser??)
 var myArr = {};
 //foodValues är listan av alla näringsvärden
 var foodValues = [];
@@ -72,14 +73,18 @@ function ajaxFindFood(stuff) {
       myArr.splice(-1,1);
       //Varje del av resultatet json-parsas för sig
       for (var i = 0; i < myArr.length; i++) {
-        console.log(myArr[i]);
+        //console.log(myArr[i]);
         myArr[i]=JSON.parse(myArr[i]);
+        myArr[i].Livsmedelsnamn=addSingleQuotes(myArr[i].Livsmedelsnamn);
+        //console.log(myArr[i]);
         returnList.push(myArr[i].Livsmedelsnamn);
+        //console.log(returnList);
       };
     }
   }
   xmlhttp1.open("GET", url, true);
   xmlhttp1.send();
+  console.log(returnList);
   return (returnList);
 }
 
@@ -87,8 +92,10 @@ function ajaxFindFood(stuff) {
 //Därefter rita diagrammet
 function init() {
   var urlSelection = getSelectionFromUrl();
-  multi.selectedFoodOptions = urlSelection.food;
-  drawChart(multi.selectedFoodOptions);
+  console.log(urlSelection);
+  multi.selectedFoodOptions = urlSelection;
+  //True för att den behöver lägga till citattecken
+  drawChart(multi.selectedFoodOptions,true);
 }
 
 //Hämta livsmedel i urlen för att populera multiselect
@@ -108,7 +115,12 @@ function getSelectionFromUrl() {
                 .replace(/=/g, '":"') + '"}');
     }
     console.log(url_args);
-    return url_args;
+    var keys = Object.keys(url_args);
+    console.log(keys);
+    url_args.food=url_args.food.slice(1, -1);
+    var sel = url_args.food.split("','");
+    console.log(sel);
+    return sel;
 }
 
 
@@ -128,7 +140,7 @@ var multi=new Vue({
   },
   methods: {
     limitText (count) {
-      return `and ${count} other foods`
+      return `och ${count} andra livsmedel`
     },
     asyncFind (query) {
       this.isLoading = true;
@@ -163,9 +175,11 @@ var parameters=new Vue({
 //Tar en lista av objekt med alla näringsvärden
 function sendToPlotly(foodValues) {
   var data=[];
+  console.log(foodValues);
   //Ett trace per livsmedel
   for (var i = 0; i < foodValues.length; i++) {
     if (foodValues[i]) {
+
       trace=getData(foodValues[i]);
       data.push(trace);
     }
@@ -184,22 +198,40 @@ function sendToPlotly(foodValues) {
   }
 
 //Lägger till enkla citattecken till input
-function addQuotationMarks(item) {
-    return ("'" + item + "'");
+function addSingleQuotes(item) {
+    item = "'" + item + "'";
+    return item;
   }
 
+  //Tar bort enkla citattecken från input
+  function stripFirstLast(item) {
+      item = item.slice(1, -1);
+      return item;
+    }
+
 //Äkta AJAX...
-function drawChart(foodList) {
+function drawChart(foodList,addQuotes) {
   //Snygga till listan av Livsmedelsnamn så den kan skickas till databasen av php
-  foodList.forEach(addQuotationMarks);
-    foodList=foodList.join("','");
-    foodList=addQuotationMarks(foodList);
+  console.log(foodList);
+  if (addQuotes) {
+    for (var i = 0; i < foodList.length; i++) {
+      foodList[i]=addSingleQuotes(foodList[i]);
+    }
+  }
+
+  //foodList.forEach(addSingleQuotes);
+  console.log(foodList);
+    //foodList=foodList.join("','");
+    //foodList=addSingleQuotes(foodList);
+    //console.log(foodList);
     var xmlhttp2 = new XMLHttpRequest();
     foodList=encodeURI(foodList);
+    console.log(foodList);
     var url = "food_values.php?foodStuff=" + foodList;
     xmlhttp2.onreadystatechange = function() {
       if(xmlhttp2.readyState == 4 && xmlhttp2.status == 200) {
         foodValues = xmlhttp2.responseText; //JSON.parse(xmlhttp2.responseText);
+        console.log(foodValues);
         foodValues=foodValues.split('##');
         sendToPlotly(foodValues);
       }
