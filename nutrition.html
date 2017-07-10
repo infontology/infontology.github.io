@@ -48,7 +48,7 @@
 <input id="url" v-model="url" style="width: 600px">
 <p>Ändra storlek på diagrammet: <input type="text" v-model="diagramWidth" size="6"> pixlar brett
     <input type="text" v-model="diagramHeight" size="6"> pixlar högt
-    <button type="button" name="button" onclick='drawChart(multi.selectedFoodOptions,false)'>Rita om</button>
+    <button type="button" name="redraw" onclick='drawChart(multi.selectedFoodOptions,false)'>Rita om</button>
 
 </p>
 </div>
@@ -124,7 +124,13 @@ function getSelectionFromUrl() {
     var keys = Object.keys(url_args);
     console.log(keys);
     url_args.food=url_args.food.slice(1, -1);
+    //Skulle man inte kunna sätta multi.selectedFoodOptions direkt här i stället??
     var sel = url_args.food.split("','");
+    console.log(url_args.width);
+    if (url_args.width) {
+      multi.diagramWidth=url_args.width;
+      multi.diagramHeight=url_args.height
+    }
     console.log(sel);
     return sel;
 }
@@ -163,7 +169,7 @@ var multi=new Vue({
       var foodItems = this.selectedFoodOptions;
       console.log(foodItems);
       var food_url = encodeURI(foodItems);
-      var new_address = address + '?food=' + food_url;
+      var new_address = address + '?food=' + food_url + '&width=' + multi.diagramWidth + '&height=' + multi.diagramHeight;
       return new_address;
     },
   }
