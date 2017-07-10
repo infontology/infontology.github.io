@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Multiselect</title>
+  <title>Kodamat v2</title>
   <script src="script/vue.js"></script>
   <script src="script/plotly-latest.min.js"></script>
   <script src="script/vue-multiselect.js"></script>
@@ -41,10 +41,16 @@
 
 <!-- drawChart skickas med false för att den inte ska lägga till citattecken -->
 <button type="button" name="button" onclick='drawChart(multi.selectedFoodOptions,false)'>Rita graf</button>
-<div id="plot" style="width: 800px; height: 400px;"></div>
+
+<div id="plot" ></div>
 
 <p>Om du vill komma tillbaka till det här urvalet kan du kopiera adressen i det här fältet:</p>
 <input id="url" v-model="url" style="width: 600px">
+<p>Ändra storlek på diagrammet: <input type="text" v-model="diagramWidth" size="6"> pixlar brett
+    <input type="text" v-model="diagramHeight" size="6"> pixlar högt
+    <button type="button" name="button" onclick='drawChart(multi.selectedFoodOptions,false)'>Rita om</button>
+
+</p>
 </div>
 
 <script type="text/javascript">
@@ -131,6 +137,8 @@ var multi=new Vue({
     Multiselect: window.VueMultiselect.default
   },
   data: {
+    diagramWidth: 600,
+    diagramHeight: 400,
     url_args: '',
     //De livsmedel man har valt
     selectedFoodOptions: [],
@@ -185,6 +193,9 @@ function sendToPlotly(foodValues) {
     }
   }
   var layout = {
+    autosize:false,
+    width:multi.diagramWidth,
+    height:multi.diagramHeight,
     title: 'Mat',
     xaxis: {
       //Källan borde göras som en annotation
