@@ -98,7 +98,7 @@ function ajaxFindFood(stuff) {
 //Därefter rita diagrammet
 function init() {
   var urlSelection = getSelectionFromUrl();
-  console.log(urlSelection);
+  //console.log(urlSelection);
   multi.selectedFoodOptions = urlSelection;
   //True för att den behöver lägga till citattecken
   drawChart(multi.selectedFoodOptions,true);
@@ -109,34 +109,30 @@ function getSelectionFromUrl() {
   //location.search returnerar alla parametrar till url.
   //substring(1) utelämnar '?'
   var url_args = window.location.search.substring(1);
-  console.log(window.location.search.substring(1));
-  //url_args=decodeURI(url_args);
-  console.log(url_args);
-  var obj = {};
-
-    if(url_args) {
+  //console.log(window.location.search.substring(1));
+  //console.log(url_args);
+  if(url_args) {
         url_args = JSON.parse('{"' + decodeURI(url_args)
                 .replace(/"/g, '\\"')
                 .replace(/&/g, '","')
                 .replace(/=/g, '":"') + '"}');
+    } else {
+      return "";
     }
-    console.log(url_args);
+    //console.log(url_args);
     var keys = Object.keys(url_args);
-    console.log(keys);
+    //console.log(keys);
     url_args.food=url_args.food.slice(1, -1);
     //Skulle man inte kunna sätta multi.selectedFoodOptions direkt här i stället??
     var sel = url_args.food.split("','");
-    console.log(url_args.width);
+    //console.log(url_args.width);
     if (url_args.width) {
       multi.diagramWidth=url_args.width;
       multi.diagramHeight=url_args.height
     }
-    console.log(sel);
+    //console.log(sel);
     return sel;
 }
-
-
-
 
 var multi=new Vue({
   components: {
@@ -164,12 +160,17 @@ var multi=new Vue({
   },
   computed: {
     url: function (){
-      //Borde kunna göras med location.search?
       var address = window.location.href.split('?')[0];
       var foodItems = this.selectedFoodOptions;
-      console.log(foodItems);
+      //console.log(foodItems);
       var food_url = encodeURI(foodItems);
-      var new_address = address + '?food=' + food_url + '&width=' + multi.diagramWidth + '&height=' + multi.diagramHeight;
+      //console.log(multi.diagramWidth);
+      if (multi.diagramWidth) {
+        var size_url = '&width=' + multi.diagramWidth + '&height=' + multi.diagramHeight;
+      } else {
+        var size_url = '';
+      }
+      var new_address = address + '?food=' + food_url + size_url;
       return new_address;
     },
   }
@@ -189,7 +190,7 @@ var parameters=new Vue({
 //Tar en lista av objekt med alla näringsvärden
 function sendToPlotly(foodValues) {
   var data=[];
-  console.log(foodValues);
+  //console.log(foodValues);
   //Ett trace per livsmedel
   for (var i = 0; i < foodValues.length; i++) {
     if (foodValues[i]) {
@@ -229,7 +230,7 @@ function addSingleQuotes(item) {
 //Äkta AJAX...
 function drawChart(foodList,addQuotes) {
   //Snygga till listan av Livsmedelsnamn så den kan skickas till databasen av php
-  console.log(foodList);
+  //console.log(foodList);
   if (addQuotes) {
     for (var i = 0; i < foodList.length; i++) {
       foodList[i]=addSingleQuotes(foodList[i]);
@@ -237,18 +238,18 @@ function drawChart(foodList,addQuotes) {
   }
 
   //foodList.forEach(addSingleQuotes);
-  console.log(foodList);
+  //console.log(foodList);
     //foodList=foodList.join("','");
     //foodList=addSingleQuotes(foodList);
     //console.log(foodList);
     var xmlhttp2 = new XMLHttpRequest();
     foodList=encodeURI(foodList);
-    console.log(foodList);
+    //console.log(foodList);
     var url = "food_values.php?foodStuff=" + foodList;
     xmlhttp2.onreadystatechange = function() {
       if(xmlhttp2.readyState == 4 && xmlhttp2.status == 200) {
         foodValues = xmlhttp2.responseText; //JSON.parse(xmlhttp2.responseText);
-        console.log(foodValues);
+        //console.log(foodValues);
         foodValues=foodValues.split('##');
         sendToPlotly(foodValues);
       }
