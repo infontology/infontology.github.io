@@ -44,12 +44,13 @@
 
 <div id="plot" ></div>
 
-<p>Om du vill komma tillbaka till det här urvalet kan du kopiera adressen i det här fältet:</p>
-<input id="url" v-model="url" style="width: 600px">
-<p>Ändra storlek på diagrammet: <input type="text" v-model="diagramWidth" size="6"> pixlar brett
+<!-- class="noembed" gör att elementet inte visas om man skickar med embed = 1 i urlen, dvs om
+det är meningen att sidan ska visas inbäddad med en iframe i en annan sida -->
+<p class="noembed">Om du vill komma tillbaka till det här urvalet kan du kopiera adressen i det här fältet:</p>
+<input class="noembed" id="url" v-model="url" style="width: 600px">
+<p class="noembed">Ändra storlek på diagrammet: <input type="text" v-model="diagramWidth" size="6"> pixlar brett
     <input type="text" v-model="diagramHeight" size="6"> pixlar högt
     <button type="button" name="redraw" onclick='drawChart(multi.selectedFoodOptions,false)'>Rita om</button>
-
 </p>
 </div>
 
@@ -105,6 +106,7 @@ function init() {
 }
 
 //Hämta livsmedel i urlen för att populera multiselect
+//Dölj det som ska döljas, om embed=1
 function getSelectionFromUrl() {
   //location.search returnerar alla parametrar till url.
   //substring(1) utelämnar '?'
@@ -125,11 +127,23 @@ function getSelectionFromUrl() {
     url_args.food=url_args.food.slice(1, -1);
     //Skulle man inte kunna sätta multi.selectedFoodOptions direkt här i stället??
     var sel = url_args.food.split("','");
+    //var emb = url_args.embed;
+    //console.log(url_args.embed);
+    //console.log(emb);
+
+    if (Number(url_args.embed) == 1) {
+      var hiddenElements = document.getElementsByClassName("noembed");
+      //console.log(hiddenElements);
+      for (var i = 0; i < hiddenElements.length; i++) {
+        hiddenElements[i].style.display = 'none';
+      }
+    }
     //console.log(url_args.width);
     if (url_args.width) {
       multi.diagramWidth=url_args.width;
       multi.diagramHeight=url_args.height
     }
+
     //console.log(sel);
     return sel;
 }
@@ -141,6 +155,7 @@ var multi=new Vue({
   data: {
     diagramWidth: 600,
     diagramHeight: 400,
+    //embedFlag: 0,
     url_args: '',
     //De livsmedel man har valt
     selectedFoodOptions: [],
@@ -164,9 +179,9 @@ var multi=new Vue({
       var foodItems = this.selectedFoodOptions;
       //console.log(foodItems);
       var food_url = encodeURI(foodItems);
-      //console.log(multi.diagramWidth);
-      if (multi.diagramWidth) {
-        var size_url = '&width=' + multi.diagramWidth + '&height=' + multi.diagramHeight;
+      //console.log(this.diagramWidth);
+      if (this.diagramWidth) {
+        var size_url = '&width=' + this.diagramWidth + '&height=' + this.diagramHeight;
       } else {
         var size_url = '';
       }
@@ -194,7 +209,6 @@ function sendToPlotly(foodValues) {
   //Ett trace per livsmedel
   for (var i = 0; i < foodValues.length; i++) {
     if (foodValues[i]) {
-
       trace=getData(foodValues[i]);
       data.push(trace);
     }
@@ -237,11 +251,6 @@ function drawChart(foodList,addQuotes) {
     }
   }
 
-  //foodList.forEach(addSingleQuotes);
-  //console.log(foodList);
-    //foodList=foodList.join("','");
-    //foodList=addSingleQuotes(foodList);
-    //console.log(foodList);
     var xmlhttp2 = new XMLHttpRequest();
     foodList=encodeURI(foodList);
     //console.log(foodList);
